@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ chia lưới ảnh Pro</title>
+    <style>
+        /* --- CSS Styles --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            width: 100%;
+            max-width: 800px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h2 { margin-top: 0; color: #444; }
+
+        /* Nút Upload */
+        .upload-area {
+            margin-bottom: 20px;
+        }
+        .btn-upload {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+        }
+        .btn-upload:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        /* Vùng hiển thị ảnh (Canvas) */
+        .canvas-wrapper {
+            width: 100%;
+            min-height: 400px;
+            background-color: #eeeeee;
+            background-image: radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            border: 2px dashed #ccc;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 70vh;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none; 
+        }
+
+        #placeholderText {
+             color: #888;
+             font-size: 1.2rem;
+        }
+
+        /* Khu vực điều khiển */
+        .controls {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        /* Hàng chứa các cài đặt */
+        .settings-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+        
+        .input-group label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Inputs Styling */
+        input[type="number"] {
+            padding: 8px;
+            width: 60px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            background: none;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { 
+            border-radius: 50%; 
+            border: 2px solid #ddd;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+            width: 120px;
+        }
+
+        .value-display {
+            font-size: 0.9rem;
+            color: #666;
+            min-width: 35px;
+        }
+
+        /* Button Download */
+        .btn-download {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(46, 204, 113, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+        
+        .btn-download:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>✏️ Công Cụ Kẻ Lưới Vẽ Tranh</h2>
+        
+        <div class="upload-area">
+            <label for="fileInput" class="btn-upload">
+                <span>📁</span> Tải ảnh lên
+            </label>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="imageCanvas"></canvas>
+            <p id="placeholderText">Chưa có ảnh nào</p>
+        </div>
+
+        <div class="controls">
+            <div class="settings-row">
+                
+                <div class="input-group">
+                    <label>Số ô lưới (Grid):</label>
+                    <div class="control-item">
+                        <input type="number" id="gridNumber" value="4" min="1" max="50">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Độ dày nét:</label>
+                    <div class="control-item">
+                        <input type="range" id="lineWidth" min="1" max="20" value="2">
+                        <span class="value-display" id="lineWidthVal">2px</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Màu lưới:</label>
+                    <div class="control-item">
+                        <input type="color" id="gridColor" value="#FF0000">
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="btn-download" id="btnDownload" onclick="downloadImage()" disabled>
+                <span>💾</span> Tải ảnh về máy
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        const placeholderText = document.getElementById('placeholderText');
+        const btnDownload = document.getElementById('btnDownload');
+
+        // Inputs
+        const gridNumberInput = document.getElementById('gridNumber');
+        const gridColorInput = document.getElementById('gridColor');
+        const lineWidthInput = document.getElementById('lineWidth');
+        const lineWidthVal = document.getElementById('lineWidthVal');
+
+        let uploadedImage = new Image();
+        let isImageLoaded = false;
+
+        // --- Xử lý sự kiện ---
+
+        // 1. Upload ảnh
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedImage = new Image();
+                uploadedImage.onload = function() {
+                    isImageLoaded = true;
+                    placeholderText.style.display = 'none'; 
+                    canvas.style.display = 'block'; 
+                    btnDownload.disabled = false;
+                    
+                    // Vẽ lưới ngay khi ảnh load xong
+                    drawGrid();
+                }
+                uploadedImage.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+            e.target.value = ''; // Reset input
+        });
+
+        // 2. Lắng nghe thay đổi input để vẽ lại ngay lập tức (Live Preview)
+        
+        // Thay đổi số ô
+        gridNumberInput.addEventListener('input', drawGrid);
+        
+        // Thay đổi màu
+        gridColorInput.addEventListener('input', drawGrid);
+        
+        // Thay đổi độ dày
+        lineWidthInput.addEventListener('input', function() {
+            // Cập nhật số hiển thị bên cạnh slider
+            lineWidthVal.textContent = this.value + 'px';
+            drawGrid();
+        });
+
+
+        // --- Hàm Vẽ Lưới Chính ---
+        function drawGrid() {
+            if (!isImageLoaded) return;
+
+            // Reset canvas về kích thước ảnh gốc
+            canvas.width = uploadedImage.width;
+            canvas.height = uploadedImage.height;
+
+            // Vẽ ảnh gốc
+            ctx.drawImage(uploadedImage, 0, 0);
+
+            // Lấy các giá trị từ input
+            const gridSize = parseInt(gridNumberInput.value) || 4;
+            const lineColor = gridColorInput.value;
+            const lineWidth = parseInt(lineWidthInput.value) || 2;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const cellWidth = width / gridSize;
+            const cellHeight = height / gridSize;
+
+            // Cấu hình nét vẽ
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = lineColor;
+            ctx.lineCap = 'square'; // Đầu nét vẽ vuông vức
+
+            ctx.beginPath();
+
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const x = i * cellWidth;
+                    const y = j * cellHeight;
+
+                    // Vẽ ô vuông (Rect)
+                    ctx.rect(x, y, cellWidth, cellHeight);
+
+                    // Vẽ đường chéo (Diagonal)
+                    // Chéo 1
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + cellWidth, y + cellHeight);
+                    // Chéo 2
+                    ctx.moveTo(x, y + cellHeight);
+                    ctx.lineTo(x + cellWidth, y);
+                }
+            }
+            
+            ctx.stroke();
+        }
+
+        // --- Hàm Tải Ảnh ---
+        function downloadImage() {
+            if (!isImageLoaded) return;
+            
+            const timestamp = new Date().getTime();
+            const fileName = `grid-maker-${timestamp}.png`;
+
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.click();
+        }
+    </script>
+</body>
+</html>
